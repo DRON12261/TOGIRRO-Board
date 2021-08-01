@@ -256,11 +256,47 @@ def adminlobby(request):
             infer = cursor.execute("SELECT * FROM Employees WHERE EmployeeID='"+str(row.InferiorID)+"'").fetchone()
             InferiorList.append(UserObj(infer.EmployeeID, infer.Surname, infer.Name, infer.Patronymic, infer.Login, infer.Password, infer.RightsLevel))
 
+    NotInferiorList = []
+    if not isNotSelectedUser:
+        InfIDs = str(request.session['UserData'])+','
+        for inf in InferiorList:
+            InfIDs = InfIDs+' '+str(inf.ID)+','
+        NonInferiorDB = None
+        NonInferiorDB = cursor.execute("SELECT * FROM Employees WHERE EmployeeID NOT IN ("+InfIDs[:-1]+")").fetchall()
+        for row in NonInferiorDB:
+            NotInferiorList.append(UserObj(row.EmployeeID, row.Surname, row.Name, row.Patronymic, row.Login, row.Password, row.RightsLevel))
+
+    if request.method == "POST" and 'deletePButton' in request.POST:
+        if len(InferiorList) > 0:
+            deletedInfers = []
+            for infer in InferiorList:
+                if 'p'+str(infer.ID) in request.POST:
+                    deletedInfers.append(infer.ID)
+            
+            for i in deletedInfers:
+                cursor.execute("DELETE FROM InferiorList WHERE ChiefID="+str(curUser.ID)+" AND InferiorID="+str(i))
+            conn.commit()
+            return redirect('adminlobby')
+    
+    if request.method == "POST" and 'addPButton' in request.POST:
+        if len(NotInferiorList) > 0:
+            addInfers = []
+            for infer in NotInferiorList:
+                if 'a'+str(infer.ID) in request.POST:
+                    addInfers.append(infer.ID)
+            
+            print(addInfers)
+            for i in addInfers:
+                cursor.execute("INSERT INTO InferiorList (ChiefID, InferiorID) VALUES("+str(curUser.ID)+", "+str(i)+")")
+            conn.commit()
+            return redirect('adminlobby')
+
     context = {
         'users' : userList,
         'curUser' : curUser,
         'loggedUser' : request.session['UserData'],
         'InferiorList' : InferiorList,
+        'NotInferiorList' : NotInferiorList,
         'searchControl' : request.session['ASearch'],
         'searchType' : request.session['ASearchType'],
         'isNotSelectedUser' : isNotSelectedUser

@@ -93,7 +93,7 @@
                                 <input type="text" class="col form-control m-1" name='search' value='{{ searchControl }}'>
                                 <select class="col form-select m-1" aria-label=".form-select-lg example" style="max-width: 180px;" name='searchType'>
                                     <option value="0" class="list-group-item-light"{% if searchType == -1 %}selected{% endif %}>Все</option>
-                                    <option value="1" class="list-group-item-info"{% if searchType == 0 %}selected{% endif %}>Сотрудники</option>
+                                    <option value="1" class="list-group-item-primary"{% if searchType == 0 %}selected{% endif %}>Сотрудники</option>
                                     <option value="2" class="list-group-item-warning"{% if searchType == 1 %}selected{% endif %}>Руководители</option>
                                     <option value="3" class="list-group-item-danger"{% if searchType == 2 %}selected{% endif %}>Администраторы</option>
                                 </select>
@@ -106,7 +106,7 @@
                             
                                 <div class="list-group">
                                     {% for user in users %}
-                                    <button type="submit" name="User{{ user.ID }}" class="list-group-item list-group-item-action {% if curUser.ID == user.ID %}bg-dark text-white {% else %}list-group-item-{% endif %}{% if user.RightsLevel == 0 %}info{% else %}{% if user.RightsLevel == 1 %}warning{% else %}danger{% endif %}{% endif %}">{{ user.Surname }} {{ user.Name }} {{ user.Patronymic }}</button>
+                                    <button type="submit" name="User{{ user.ID }}" class="list-group-item list-group-item-action {% if curUser.ID == user.ID %}bg-dark text-white {% else %}list-group-item-{% endif %}{% if user.RightsLevel == 0 %}primary{% else %}{% if user.RightsLevel == 1 %}warning{% else %}danger{% endif %}{% endif %}">{{ user.Surname }} {{ user.Name }} {{ user.Patronymic }}</button>
                                     {% endfor %}
                                 </div>
                             
@@ -135,13 +135,14 @@
                                     <option value="1" class="list-group-item-warning" {% if curUser.RightsLevel == 1 %}selected{% endif %}>Руководитель</option>
                                     <option value="2" class="list-group-item-danger" {% if curUser.RightsLevel == 2 %}selected{% endif %}>Администратор</option>
                                 </select>
+                                <button type="button" class="my-1 btn btn-primary" style="width: 100%;" data-bs-toggle="modal" data-bs-target="#saveModal" {% if isNotSelectedUser %}disabled{% endif %}>Сохранить изменения</button>
                                 <label class="form-label mt-1">Подчиненные</label>
                                 <div class="border border-1 border-secondary rounded-3 mb-1 p-1" style="overflow-y: scroll; height: 200px;">
                                     <div class="list-group">
                                         {% if isNotSelectedUser == False %}
                                         {% for user in InferiorList %}
-                                        <div class="list-group-item list-group-item-{% if user.RightsLevel == 0 %}info{% else %}{% if user.RightsLevel == 1 %}warning{% else %}danger{% endif %}{% endif %}">
-                                            <input class="form-check-input" type="checkbox">
+                                        <div class="list-group-item list-group-item-{% if user.RightsLevel == 0 %}primary{% else %}{% if user.RightsLevel == 1 %}warning{% else %}danger{% endif %}{% endif %}">
+                                            <input class="form-check-input" type="checkbox" name="p{{ user.ID }}">
                                             <label class="form-check-label">
                                                 {{ user.Surname }} {{ user.Name }} {{ user.Patronymic }}
                                             </label>
@@ -151,11 +152,31 @@
                                     </div>
                                 </div>
 
+                                <div class="modal fade" id="deletePModal" tabindex="-1" aria-labelledby="deletePLabel" aria-hidden="true">
+                                    <div class="modal-dialog modal-md modal-dialog-centered modal-dialog-scrollable">
+                                        <div class="modal-content">
+                                            <div class="modal-header bg-dark bg-gradient">
+                                                <p class="text-center text-white fs-4" style="min-width: 100%;"><strong>Удаление подчиненных</strong></p>
+                                            </div>
+                        
+                                            <div class="modal-body fs-5">
+                                                <p class="text-center">Удалить выбранных пользователей из списка подчиненных пользователя <span class="text-{% if curUser.RightsLevel == 0 %}primary{% else %}{% if curUser.RightsLevel == 1 %}warning{% else %}danger{% endif %}{% endif %}"><strong>{{ curUser.Surname }} {{ curUser.Name }} {{ curUser.Patronymic }}</strong></span>?</p>
+                                            </div>
+
+                                            <div class="modal-footer">
+                                                <button type="button" class="btn btn-secondary fs-5" data-bs-dismiss="modal">Отмена</button>
+                                                {% csrf_token %}
+                                                <button type="submit" class="btn btn-danger fs-5" name="deletePButton">Удалить подчиненных</button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
                                 <div class="modal fade" id="saveModal" tabindex="-1" aria-labelledby="saveModalLabel" aria-hidden="true">
                                     <div class="modal-dialog modal-md modal-dialog-centered modal-dialog-scrollable">
                                         <div class="modal-content">
                                             <div class="modal-header bg-dark bg-gradient">
-                                                <p class="text-center text-white fs-4" style="min-width: 100%;">Сохранение изменений</p>
+                                                <p class="text-center text-white fs-4" style="min-width: 100%;"><strong>Сохранение изменений</strong></p>
                                             </div>
                         
                                             <div class="modal-body fs-5">
@@ -173,11 +194,9 @@
 
                             </form>
                             <div class="row mx-1">
-                                <button class="col my-1 btn btn-outline-success me-1" {% if isNotSelectedUser %}disabled{% endif %}>Добавить подчиненного</button>
-                                <button class="col my-1 btn btn-outline-danger ms-1" {% if isNotSelectedUser %}disabled{% endif %}>Удалить подчиненного</button>
+                                <button class="col my-1 btn btn-outline-success me-1" data-bs-toggle="modal" data-bs-target="#addPModal" {% if isNotSelectedUser %}disabled{% endif %}>Добавить подчиненных</button>
+                                <button class="col my-1 btn btn-outline-danger ms-1" data-bs-toggle="modal" data-bs-target="#deletePModal" {% if isNotSelectedUser %}disabled{% endif %}>Удалить подчиненных</button>
                             </div>
-                            <button class="my-1 btn btn-primary" style="width: 100%;" data-bs-toggle="modal" data-bs-target="#saveModal" {% if isNotSelectedUser %}disabled{% endif %}>Сохранить изменения</button>
-                            
                         </div>
                         <button class="my-1 btn btn-danger" style="width: 100%;" data-bs-toggle="modal" data-bs-target="#deleteModal" {% if isNotSelectedUser or curUser.ID == loggedUser %}disabled{% endif %}>Удалить пользователя</button>
                     </div>
@@ -191,7 +210,7 @@
                 <div class="modal-dialog modal-lg modal-dialog-scrollable">
                     <div class="modal-content">
                         <div class="modal-header bg-dark bg-gradient">
-                            <p class="text-center text-white fs-3" style="min-width: 100%;">Добавление пользователя в систему</p>
+                            <p class="text-center text-white fs-3" style="min-width: 100%;"><strong>Добавление пользователя в систему</strong></p>
                         </div>
 
                         <div class="modal-body ">
@@ -207,7 +226,7 @@
                             <input class="form-control" type="text" value="" name="newPassword" required>
                             <label class="form-label mt-1">Права</label>
                             <select class="form-select" name="newRightsLevel" required>
-                                <option value="0" class="list-group-item-info">Сотрудник</option>
+                                <option value="0" class="list-group-item-primary">Сотрудник</option>
                                 <option value="1" class="list-group-item-warning">Руководитель</option>
                                 <option value="2" class="list-group-item-danger">Администратор</option>
                             </select>
@@ -224,11 +243,46 @@
         </form>
 
         <form method="POST" action="">
+            <div class="modal fade" id="addPModal" tabindex="-1" aria-labelledby="addPLabel" aria-hidden="true">
+                <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+                    <div class="modal-content">
+                        <div class="modal-header bg-dark bg-gradient">
+                            <p class="text-center text-white fs-3" style="min-width: 100%;"><strong>Добавление подчиненных</strong></p>
+                        </div>
+
+                        <div class="modal-body ">
+                            <form method="POST" action="">
+                                <div class="border border-1 border-secondary rounded-3 mb-1 p-1" style="overflow-y: scroll; height: 600px;">
+                                    <div class="list-group">
+                                        {% for user in NotInferiorList %}
+                                        <div class="list-group-item list-group-item-{% if user.RightsLevel == 0 %}primary{% else %}{% if user.RightsLevel == 1 %}warning{% else %}danger{% endif %}{% endif %}">
+                                            <input class="form-check-input" type="checkbox" name="a{{ user.ID }}">
+                                            <label class="form-check-label">
+                                                {{ user.Surname }} {{ user.Name }} {{ user.Patronymic }}
+                                            </label>
+                                        </div>
+                                        {% endfor %}
+                                    </div>
+                                </div>
+                            </form>
+                        </div>
+
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary fs-5" data-bs-dismiss="modal">Отмена</button>
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-success fs-5" name="addPButton">Добавить подчиненных</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </form>
+
+        <form method="POST" action="">
             <div class="modal fade" id="deleteModal" tabindex="-1" aria-labelledby="deleteModalLabel" aria-hidden="true">
                 <div class="modal-dialog modal-md modal-dialog-centered modal-dialog-scrollable">
                     <div class="modal-content">
                         <div class="modal-header bg-dark bg-gradient">
-                            <p class="text-center text-white fs-4" style="min-width: 100%;">Удаление пользователя из системы</p>
+                            <p class="text-center text-white fs-4" style="min-width: 100%;"><strong>Удаление пользователя из системы</strong></p>
                         </div>
 
                         <div class="modal-body fs-5">
