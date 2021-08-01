@@ -1,0 +1,5 @@
+localhost\sqlexpress
+TOGIRRO
+DESKTOP-M7C36LJ\DRON12261
+12262000
+17

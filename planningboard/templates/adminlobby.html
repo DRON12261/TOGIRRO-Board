@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        {%load static %}
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+        <meta name="description" content="">
+        <meta name="author" content="">
+        <title>Система планирования</title>
+        <link rel="stylesheet" type="text/css" href="{% static 'bootstrap/css/bootstrap.min.css' %}">
+        <link rel="stylesheet" type="text/css" href="{% static 'icons/font/bootstrap-icons.css' %}">
+        <link rel="stylesheet" type="text/css" href="{% static 'gridstrap/jquery.gridstrap.css' %}">  
+        <link rel="stylesheet" type="text/css" href="{% static 'style.css' %}">
+    </head>
+    <body>
+        <div style="display: flex; flex-direction: column; height: 100vh;">
+          
+        <div class="offcanvas offcanvas-end"data-bs-scroll="true" data-bs-backdrop="false" tabindex="-1" id="offcanvasScrolling" aria-labelledby="offcanvasScrollingLabel">
+            <div class="offcanvas-header bg-dark bg-gradient text-white">
+                <h5 class="offcanvas-title fs-1" id="offcanvasExampleLabel">Мессенджер</h5>
+                <button type="button" class="btn btn-outline-light m-1" data-bs-dismiss="offcanvas" aria-label="Close"><i class="bi-x-square-fill fs-5"></i></button>
+            </div>
+
+            <div class="offcanvas-body border border-dark border-2">
+
+                <h3 class="offcanvas-title bg-dark bg-gradient text-white border border-secondary" id="offcanvasExampleLabel"><i class="bi-person-badge-fill fs-3 mx-1"></i>Иван Иваныч Иваненко</h3>
+                
+                <div class="">
+                    <div class="border border-secondary bg-warning" style="width: 20%; float: right; display: flex;">
+                        Други
+                    </div>
+                    <div class="border border-secondary bg-danger" style="width: 80%; float: left; display: flex;">
+                        Чат
+                    </div>
+                </div>
+
+                <div class="bg-info" style="height: 100px; float: inline-end">
+
+                </div>
+            </div>
+        </div>
+
+        <header>
+            <div class="container-fluid px-3 bg-dark bg-gradient text-white">
+                <div class="d-flex flex-wrap align-items-center justify-content-center justify-content-lg-start">
+                    <p class="d-flex align-items-center my-2 my-lg-0 me-lg-auto text-white text-decoration-none fs-2"><i class="bi-map-fill px-3"></i>TOGIRRO Board</p>
+                    
+                    <div class="row justify-content-md-center">
+                        <div class="col">
+                            <form method="POST" action="">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-outline-light m-1" name='tasks'>
+                                    <div class="col">
+                                        <div class="row text-center mx-auto"><i class="bi-table fs-3"></i></div>
+                                        <div class="row text-center mx-auto">Задачи</div>
+                                    </div>
+                                </button> 
+                            </form>
+                        </div>
+                        <div class="col">
+                            <button type="button" class="btn btn-outline-light m-1" data-bs-toggle="offcanvas" data-bs-target="#offcanvasScrolling" aria-controls="offcanvasScrolling">
+                                <div class="col">
+                                    <div class="row text-center mx-auto"><i class="bi-chat-right-text-fill fs-3"></i></div>
+                                    <div class="row text-center mx-auto">Мессенджер</div>
+                                </div>
+                            </button> 
+                        </div>
+                        <div class="col">
+                            <button type="button" class="btn btn-outline-light m-1"  id="dropdownMenuButton1" data-bs-toggle="dropdown" aria-expanded="false">
+                                <div class="col">
+                                    <div class="row text-center mx-auto"><i class="bi-person-circle fs-3"></i></div>
+                                    <div class="row text-center mx-auto">Аккаунт</div>
+                                </div>
+                            </button> 
+                            <ul class="dropdown-menu" aria-labelledby="dropdownMenuButton1">
+                                <li><a class="dropdown-item" href="#">Настройки</a></li>
+                                <li><form method="POST" action="">{% csrf_token %}<button type="submit" class="dropdown-item" name="logout">Выйти</button></form></li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <div class="container-fluid d-flex border border-3 border-dark" style="flex-grow: 3; overflow-y: scroll;">
+        
+            <div class="" style="width: 100%;">
+                <div class="row" style="min-height: 100%; max-height: 100%;">
+                    <div class="d-flex flex-column col m-1 border border-2 border-dark rounded-3" style="min-height: 99%; max-height: 99%;">
+                        <form method="POST" action="">
+                            {% csrf_token %}
+                            <div class="row mx-1">
+                                <input type="text" class="col form-control m-1" name='search' value='{{ searchControl }}'>
+                                <select class="col form-select m-1" aria-label=".form-select-lg example" style="max-width: 180px;" name='searchType'>
+                                    <option value="0" class="list-group-item-light"{% if searchType == -1 %}selected{% endif %}>Все</option>
+                                    <option value="1" class="list-group-item-info"{% if searchType == 0 %}selected{% endif %}>Сотрудники</option>
+                                    <option value="2" class="list-group-item-warning"{% if searchType == 1 %}selected{% endif %}>Руководители</option>
+                                    <option value="3" class="list-group-item-danger"{% if searchType == 2 %}selected{% endif %}>Администраторы</option>
+                                </select>
+                                <button type="submit" class="col btn btn-primary m-1" style="max-width: 50px;" name="searchButton"><i class="bi-search fs-5"></i></button>
+                            </div>
+                        </form>
+                        <div class="border border-1 border-secondary rounded-3 my-1 p-1" style="overflow-y: scroll; height: 724px;">
+                            <form method="POST" action="">
+                            {% csrf_token %}
+                            
+                                <div class="list-group">
+                                    {% for user in users %}
+                                    <button type="submit" name="User{{ user.ID }}" class="list-group-item list-group-item-action {% if curUser.ID == user.ID %}bg-dark text-white {% else %}list-group-item-{% endif %}{% if user.RightsLevel == 0 %}info{% else %}{% if user.RightsLevel == 1 %}warning{% else %}danger{% endif %}{% endif %}">{{ user.Surname }} {{ user.Name }} {{ user.Patronymic }}</button>
+                                    {% endfor %}
+                                </div>
+                            
+                            </form>
+                        </div>
+                        <button class="my-1 btn btn-success" style="width: 100%;" data-bs-toggle="modal" data-bs-target="#createModal">Добавить пользователя</button>
+                    </div>
+
+                    <div class="col m-1 border border-2 border-dark rounded-3" style="height: 99%;">
+                        <div class="m-1">
+                            <form method="POST" action="">
+                                {% csrf_token %}
+                                <label class="form-label mt-1">Фамилия</label>
+                                <input class="form-control" type="text" value="{{ curUser.Surname }}" name="saveSurname" {% if isNotSelectedUser %}disabled{% endif %}>
+                                <label class="form-label mt-1">Имя</label>
+                                <input class="form-control" type="text" value="{{ curUser.Name }}" name="saveName" {% if isNotSelectedUser %}disabled{% endif %}>
+                                <label class="form-label mt-1">Отчество</label>
+                                <input class="form-control" type="text" value="{{ curUser.Patronymic }}" name="savePatronymic" {% if isNotSelectedUser %}disabled{% endif %}>
+                                <label class="form-label mt-1">Логин</label>
+                                <input class="form-control" type="text" value="{{ curUser.Login }}" name="saveLogin" {% if isNotSelectedUser %}disabled{% endif %}>
+                                <label class="form-label mt-1">Пароль</label>
+                                <input class="form-control" type="text" value="{{ curUser.Password }}" name="savePassword" {% if isNotSelectedUser %}disabled{% endif %}>
+                                <label class="form-label mt-1">Права</label>
+                                <select class="form-select" name="saveRightsLevel" {% if isNotSelectedUser %}disabled{% endif %}>
+                                    <option value="0" class="list-group-item-info" {% if curUser.RightsLevel == 0 %}selected{% endif %}>Сотрудник</option>
+                                    <option value="1" class="list-group-item-warning" {% if curUser.RightsLevel == 1 %}selected{% endif %}>Руководитель</option>
+                                    <option value="2" class="list-group-item-danger" {% if curUser.RightsLevel == 2 %}selected{% endif %}>Администратор</option>
+                                </select>
+                                <label class="form-label mt-1">Подчиненные</label>
+                                <div class="border border-1 border-secondary rounded-3 mb-1 p-1" style="overflow-y: scroll; height: 200px;">
+                                    <div class="list-group">
+                                        {% if isNotSelectedUser == False %}
+                                        {% for user in InferiorList %}
+                                        <div class="list-group-item list-group-item-{% if user.RightsLevel == 0 %}info{% else %}{% if user.RightsLevel == 1 %}warning{% else %}danger{% endif %}{% endif %}">
+                                            <input class="form-check-input" type="checkbox">
+                                            <label class="form-check-label">
+                                                {{ user.Surname }} {{ user.Name }} {{ user.Patronymic }}
+                                            </label>
+                                        </div>
+                                        {% endfor %}
+                                        {% endif %}
+                                    </div>
+                                </div>
+
+                                <div class="modal fade" id="saveModal" tabindex="-1" aria-labelledby="saveModalLabel" aria-hidden="true">
+                                    <div class="modal-dialog modal-md modal-dialog-centered modal-dialog-scrollable">
+                                        <div class="modal-content">
+                                            <div class="modal-header bg-dark bg-gradient">
+                                                <p class="text-center text-white fs-4" style="min-width: 100%;">Сохранение изменений</p>
+                                            </div>
+                        
+                                            <div class="modal-body fs-5">
+                                                <p class="text-center">Прошлые данные будут <span class="text-danger"><strong>перезаписаны</strong></span>. Вы уверены?</p>
+                                            </div>
+
+                                            <div class="modal-footer">
+                                                <button type="button" class="btn btn-secondary fs-5" data-bs-dismiss="modal">Отмена</button>
+                                                {% csrf_token %}
+                                                <button type="submit" class="btn btn-primary fs-5" name="saveButton">Сохранить</button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                            </form>
+                            <div class="row mx-1">
+                                <button class="col my-1 btn btn-outline-success me-1" {% if isNotSelectedUser %}disabled{% endif %}>Добавить подчиненного</button>
+                                <button class="col my-1 btn btn-outline-danger ms-1" {% if isNotSelectedUser %}disabled{% endif %}>Удалить подчиненного</button>
+                            </div>
+                            <button class="my-1 btn btn-primary" style="width: 100%;" data-bs-toggle="modal" data-bs-target="#saveModal" {% if isNotSelectedUser %}disabled{% endif %}>Сохранить изменения</button>
+                            
+                        </div>
+                        <button class="my-1 btn btn-danger" style="width: 100%;" data-bs-toggle="modal" data-bs-target="#deleteModal" {% if isNotSelectedUser or curUser.ID == loggedUser %}disabled{% endif %}>Удалить пользователя</button>
+                    </div>
+                </div>
+            </div>
+        
+        </div>
+
+        <form method="POST" action="">
+            <div class="modal fade" id="createModal" tabindex="-1" aria-labelledby="createModalLabel" aria-hidden="true">
+                <div class="modal-dialog modal-lg modal-dialog-scrollable">
+                    <div class="modal-content">
+                        <div class="modal-header bg-dark bg-gradient">
+                            <p class="text-center text-white fs-3" style="min-width: 100%;">Добавление пользователя в систему</p>
+                        </div>
+
+                        <div class="modal-body ">
+                            <label class="form-label mt-1">Фамилия</label>
+                            <input class="form-control" type="text" value="" name="newSurname" required>
+                            <label class="form-label mt-1">Имя</label>
+                            <input class="form-control" type="text" value="" name="newName" required>
+                            <label class="form-label mt-1">Отчество</label>
+                            <input class="form-control" type="text" value="" name="newPatronymic" required>
+                            <label class="form-label mt-1">Логин</label>
+                            <input class="form-control" type="text" value="" name="newLogin" required>
+                            <label class="form-label mt-1">Пароль</label>
+                            <input class="form-control" type="text" value="" name="newPassword" required>
+                            <label class="form-label mt-1">Права</label>
+                            <select class="form-select" name="newRightsLevel" required>
+                                <option value="0" class="list-group-item-info">Сотрудник</option>
+                                <option value="1" class="list-group-item-warning">Руководитель</option>
+                                <option value="2" class="list-group-item-danger">Администратор</option>
+                            </select>
+                        </div>
+
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary fs-5" data-bs-dismiss="modal">Отмена</button>
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-success fs-5" name="createNewUser">Добавить</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </form>
+
+        <form method="POST" action="">
+            <div class="modal fade" id="deleteModal" tabindex="-1" aria-labelledby="deleteModalLabel" aria-hidden="true">
+                <div class="modal-dialog modal-md modal-dialog-centered modal-dialog-scrollable">
+                    <div class="modal-content">
+                        <div class="modal-header bg-dark bg-gradient">
+                            <p class="text-center text-white fs-4" style="min-width: 100%;">Удаление пользователя из системы</p>
+                        </div>
+
+                        <div class="modal-body fs-5">
+                            <div class="alert alert-danger text-center" role="alert">
+                                <strong>ВНИМАНИЕ!</strong> Данные пользователя будут удалены <strong>безвозвратно</strong>! Вы уверены?
+                            </div>
+                        </div>
+
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary fs-5" data-bs-dismiss="modal">Отмена</button>
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-danger fs-5" name="deleteButton">Удалить</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </form>
+
+            <script type="text/javascript" src="{% static 'jquery-3.6.0.min.js' %}"></script>
+            <script type="text/javascript" src="{% static 'bootstrap/js/bootstrap.min.js' %}"></script>
+            <script type="text/javascript" src="{% static 'bootstrap/js/bootstrap.bundle.min.js' %}"></script>
+            <script type="text/javascript" src="{% static 'gridstrap/jquery.gridstrap.js' %}"></script>
+            <script type="text/javascript" src="{% static 'script.js' %}"></script>
+        </div>
+    </body>
+</html>
