@@ -55,11 +55,22 @@ def board(request):
     UserD = cursor.execute("SELECT * FROM Employees WHERE EmployeeID='"+str(request.session['UserData'])+"'").fetchall()[0]
     UserName = UserD.Surname+' '+UserD.Name+' '+UserD.Patronymic
 
+    Days = []
     TodayDay = 0
     if str(datetime.date.today().isocalendar()[0])+'-W'+str(datetime.date.today().isocalendar()[1]) == request.session['Date']:
         TodayDay = datetime.date.today().isocalendar()[2]
     else:
         TodayDay = 0
+    TodayWeek = datetime.date.today().isocalendar()[1]
+    WeekOnPage = int(request.session['Date'][6:])
+    EndSt = 0
+    if TodayDay == 0:
+        EndSt = 7-TodayDay-1
+    else:
+        EndSt = 7-TodayDay
+    for i in range(1,8):
+        Days.append(datetime.date.today() + datetime.timedelta(days=EndSt, weeks=WeekOnPage-TodayWeek))
+        EndSt = EndSt - 1
 
     InferiorDB = cursor.execute("SELECT * FROM InferiorList WHERE ChiefID='"+str(request.session['UserData'])+"'").fetchall()
     InferiorList = [Inferior(0, '[ВЫ] '+UserName, UserD.EmployeeID)]
@@ -72,25 +83,67 @@ def board(request):
     if request.method == "POST" and 'inferior' in request.POST:
         request.session['CurInferior'] = int(request.POST['inferior'])
     
-    Tasks = [
-        [
-            Task(0, "", "", "2", ""),
-            Task(1, "Task1", "Task1", "4", "danger"),
-            Task(0, "", "", "1", "")
-        ],
-        [
-            Task(0, "", "", "1", ""),
-            Task(1, "Task2", "Task2", "2", "info"),
-            Task(0, "", "", "2", ""),
-            Task(1, "Task3", "Task3", "2", "info")
-        ],
-        [
-            Task(0, "", "", "7", "")
-        ],
-        [
-            Task(1, "Task4", "Task4", "7", "warning")
-        ]
-    ]
+    Tasks = [[],[],[],[],[]]
+    TaskList = []
+    taskIDs = ""
+
+    TaskIDDB = cursor.execute("SELECT TaskID FROM TaskList WHERE EmployeeID="+str(InferiorList[int(request.session['CurInferior'])].ID)).fetchall()
+    for row in TaskIDDB:
+        taskIDs = taskIDs+str(row.TaskID)+','
+    if taskIDs != "":
+        taskIDs = taskIDs[:-1]
+        TasksDB = cursor.execute("SELECT * FROM Tasks WHERE (Start BETWEEN '"+Days[6].strftime("%Y/%m/%d")+"' AND '"+Days[0].strftime("%Y/%m/%d")+"' OR Deadline BETWEEN '"+Days[6].strftime("%Y/%m/%d")+"' AND '"+Days[0].strftime("%Y/%m/%d")+"') AND TaskID IN ("+taskIDs+")").fetchall()
+        for row in TasksDB:
+            desc = ""
+            if row.Description != None:
+                desc = cursor.execute("SELECT Text FROM Texts WHERE TextID="+str(row.Description)).fetchone().Text
+            startDate = row.Start
+            endDate = row.Deadline + datetime.timedelta(days=1)
+            if row.Deadline + datetime.timedelta(days=1) > Days[0]:
+                endDate = Days[0] + datetime.timedelta(days=1)
+            if row.Start < Days[6]:
+                startDate = Days[6]
+            size = (endDate - startDate).days
+            if size > 7:
+                size = 7
+            elif size < 1:
+                size = 1
+            pos = 1
+            for i in range(0,7):
+                if row.Start == Days[i]:
+                    pos = 7 - i
+            CheckListsDB = cursor.execute("SELECT * FROM CheckBoxList WHERE TaskID="+str(row.TaskID)).fetchone()
+            CheckBoxDB = cursor.execute("SELECT * FROM CheckBoxes WHERE CheckBoxID="+str(CheckListsDB.CheckBoxID)).fetchone()
+            TextDB = cursor.execute("SELECT * FROM Texts WHERE TextID="+str(CheckBoxDB.TextID)).fetchone()
+            TaskList.append(Task(1, row.Title, desc, pos , size, row.TaskColor, row.Start, row.Deadline, row.Priority, row.TaskID, TextDB.Text, CheckBoxDB.Status))
+
+    fillCounter = 0
+    for i in range(0,5):
+        for j in range(1,8):
+            if fillCounter > 0:
+                fillCounter = fillCounter - 1
+                continue
+            isFound = False
+            isBreak = False
+            for task in TaskList:
+                if task.Priority == i+1:
+                    if task.StartPosition == j:
+                        Tasks[i].append(task)
+                        fillCounter = task.Size - 1
+                        isFound = True
+                        isBreak = True
+                        break
+            if not isFound:
+                Tasks[i].append(Task(0,"","",j,1,"",datetime.date.today(),datetime.date.today(),i+1,0,"",0))
+    
+    for task in TaskList:
+        if request.method == "POST" and 'sendReport'+str(task.ID) in request.POST:
+            print(task.ID)
+            print(request.POST['Report'+str(task.ID)])
+            checkBoxDB = cursor.execute("SELECT * FROM CheckBoxes WHERE CheckBoxId="+str(str(task.ID))).fetchone()
+            cursor.execute("UPDATE Texts SET Text='"+str(request.POST['Report'+str(task.ID)])+"' WHERE TextID="+str(CheckBoxDB.TextID))
+            conn.commit()
+            return redirect('board')
 
     context = {
         'UserName' : UserName,
@@ -98,8 +151,20 @@ def board(request):
         'Date' : request.session['Date'],
         'TodayDay' : TodayDay,
         'Tasks' : Tasks,
+        'Tasks0L' : len(Tasks[0]),
+        'Tasks1L' : len(Tasks[1]),
+        'Tasks2L' : len(Tasks[2]),
+        'Tasks3L' : len(Tasks[3]),
+        'Tasks4L' : len(Tasks[4]),
         'InferiorList' : InferiorList,
-        'CurInferior' : request.session['CurInferior']
+        'CurInferior' : request.session['CurInferior'],
+        'Monday' : Days[6].strftime("%d.%m.%Y"),
+        'Tuesday' : Days[5].strftime("%d.%m.%Y"),
+        'Wednesday' : Days[4].strftime("%d.%m.%Y"),
+        'Thursday' : Days[3].strftime("%d.%m.%Y"),
+        'Friday' : Days[2].strftime("%d.%m.%Y"),
+        'Saturday' : Days[1].strftime("%d.%m.%Y"),
+        'Sunday' : Days[0].strftime("%d.%m.%Y")
     }
 
     return render(request, 'board.html', context)
@@ -291,7 +356,11 @@ def adminlobby(request):
             conn.commit()
             return redirect('adminlobby')
 
+    UserD = cursor.execute("SELECT * FROM Employees WHERE EmployeeID='"+str(request.session['UserData'])+"'").fetchall()[0]
+    UserName = UserD.Surname+' '+UserD.Name+' '+UserD.Patronymic
+
     context = {
+        'UserName' : UserName,
         'users' : userList,
         'curUser' : curUser,
         'loggedUser' : request.session['UserData'],

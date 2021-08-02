@@ -1,16 +1,40 @@
+import datetime
+
 class Task():
     IsTask = 0
     Title = ""
     Description = ""
-    Size = ""
+    StartPosition = 0
+    Size = 0
     Color = ""
+    StartDate = None
+    EndDate = None
+    Priority = 0
+    StartDateSTR = ""
+    EndDateSTR = ""
+    StartDateSTRE = ""
+    EndDateSTRE = ""
+    ID = 0
+    ReportText =""
+    Status = 0
 
-    def __init__(self, IsTask, Title, Description, Size, Color):
+    def __init__(self, IsTask, Title, Description, StartPosition, Size, Color, StartDate, EndDate, Priority, ID, ReportText, Status):
         self.IsTask = IsTask
         self.Title = Title
         self.Description = Description
+        self.StartPosition = StartPosition
         self.Size = Size
         self.Color = Color
+        self.StartDate = StartDate
+        self.EndDate = EndDate
+        self.StartDateSTR = StartDate.strftime("%d.%m.%Y")
+        self.EndDateSTR = EndDate.strftime("%d.%m.%Y")
+        self.StartDateSTRE = StartDate.strftime("%Y-%m-%d")
+        self.EndDateSTRE = EndDate.strftime("%Y-%m-%d")
+        self.Priority = Priority
+        self.ID = ID
+        self.ReportText = ReportText
+        self.Status
 
 class Inferior():
     Position = 0

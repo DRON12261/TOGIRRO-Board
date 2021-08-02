@@ -15,7 +15,7 @@
     <body>
         <div style="display: flex; flex-direction: column; height: 100vh;">
           
-        <div class="offcanvas offcanvas-end"data-bs-scroll="true" data-bs-backdrop="false" tabindex="-1" id="offcanvasScrolling" aria-labelledby="offcanvasScrollingLabel">
+        <div class="offcanvas offcanvas-end" style="min-width: 600px;" data-bs-scroll="true" data-bs-backdrop="false" tabindex="-1" id="offcanvasScrolling" aria-labelledby="offcanvasScrollingLabel">
             <div class="offcanvas-header bg-dark bg-gradient text-white">
                 <h5 class="offcanvas-title fs-1" id="offcanvasExampleLabel">Мессенджер</h5>
                 <button type="button" class="btn btn-outline-light m-1" data-bs-dismiss="offcanvas" aria-label="Close"><i class="bi-x-square-fill fs-5"></i></button>
@@ -44,6 +44,7 @@
             <div class="container-fluid px-3 bg-dark bg-gradient text-white">
                 <div class="d-flex flex-wrap align-items-center justify-content-center justify-content-lg-start">
                     <p class="d-flex align-items-center my-2 my-lg-0 me-lg-auto text-white text-decoration-none fs-2"><i class="bi-map-fill px-3"></i>TOGIRRO Board</p>
+                    <div class="d-flex alert alert-dark shadow-lg fw-bolder align-items-center mx-2 my-2 my-lg-0 me-lg-auto text-decoration-none text-center fs-5">{{ UserName }}</div>
                     
                     <div class="row justify-content-md-center">
                         <div class="col">
@@ -66,16 +67,19 @@
                             </button> 
                         </div>
                         <div class="col">
-                            <button type="button" class="btn btn-outline-light m-1"  id="dropdownMenuButton1" data-bs-toggle="dropdown" aria-expanded="false">
-                                <div class="col">
-                                    <div class="row text-center mx-auto"><i class="bi-person-circle fs-3"></i></div>
-                                    <div class="row text-center mx-auto">Аккаунт</div>
-                                </div>
-                            </button> 
-                            <ul class="dropdown-menu" aria-labelledby="dropdownMenuButton1">
-                                <li><a class="dropdown-item" href="#">Настройки</a></li>
-                                <li><form method="POST" action="">{% csrf_token %}<button type="submit" class="dropdown-item" name="logout">Выйти</button></form></li>
-                            </ul>
+                            <form method="POST" action="">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-outline-light m-1" name="logout">
+                                    <div class="col">
+                                        <div class="row text-center mx-auto"><i class="bi-door-open-fill fs-3"></i></div>
+                                        <div class="row text-center mx-auto">Выйти</div>
+                                    </div>
+                                </button> 
+                                </form>
+                                <ul class="dropdown-menu" aria-labelledby="dropdownMenuButton1">
+                                    <li><a class="dropdown-item" href="#">Настройки</a></li>
+                                    <li><button type="submit" class="dropdown-item">Выйти</button></li>
+                                </ul>
                         </div>
                     </div>
                 </div>
