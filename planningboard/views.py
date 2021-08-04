@@ -4,7 +4,7 @@ import pyodbc, os
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required
 import datetime
-from .classes import Task, Inferior, UserObj
+from .classes import Task, Inferior, UserObj, Message, Chat
 from django.contrib.auth.models import User
 
 authorized = False
@@ -52,6 +52,12 @@ def board(request):
         logout(request)
         return redirect('login')
     
+    if request.session['EditErrorCount'] == 0:
+        request.session['EditError'] = 0
+
+    if request.session['AddErrorCount'] == 0:
+        request.session['AddError'] = 0
+
     UserD = cursor.execute("SELECT * FROM Employees WHERE EmployeeID='"+str(request.session['UserData'])+"'").fetchall()[0]
     UserName = UserD.Surname+' '+UserD.Name+' '+UserD.Patronymic
 
@@ -92,7 +98,7 @@ def board(request):
         taskIDs = taskIDs+str(row.TaskID)+','
     if taskIDs != "":
         taskIDs = taskIDs[:-1]
-        TasksDB = cursor.execute("SELECT * FROM Tasks WHERE (Start BETWEEN '"+Days[6].strftime("%Y/%m/%d")+"' AND '"+Days[0].strftime("%Y/%m/%d")+"' OR Deadline BETWEEN '"+Days[6].strftime("%Y/%m/%d")+"' AND '"+Days[0].strftime("%Y/%m/%d")+"') AND TaskID IN ("+taskIDs+")").fetchall()
+        TasksDB = cursor.execute("SELECT * FROM Tasks WHERE ((Start BETWEEN '"+Days[6].strftime("%Y/%m/%d")+"' AND '"+Days[0].strftime("%Y/%m/%d")+"' OR Deadline BETWEEN '"+Days[6].strftime("%Y/%m/%d")+"' AND '"+Days[0].strftime("%Y/%m/%d")+"') OR (Start < '"+Days[6].strftime("%Y/%m/%d")+"' AND Deadline > '"+Days[0].strftime("%Y/%m/%d")+"')) AND TaskID IN ("+taskIDs+")").fetchall()
         for row in TasksDB:
             desc = ""
             if row.Description != None:
@@ -115,7 +121,8 @@ def board(request):
             CheckListsDB = cursor.execute("SELECT * FROM CheckBoxList WHERE TaskID="+str(row.TaskID)).fetchone()
             CheckBoxDB = cursor.execute("SELECT * FROM CheckBoxes WHERE CheckBoxID="+str(CheckListsDB.CheckBoxID)).fetchone()
             TextDB = cursor.execute("SELECT * FROM Texts WHERE TextID="+str(CheckBoxDB.TextID)).fetchone()
-            TaskList.append(Task(1, row.Title, desc, pos , size, row.TaskColor, row.Start, row.Deadline, row.Priority, row.TaskID, TextDB.Text, CheckBoxDB.Status))
+            AuthorDB = cursor.execute("SELECT * FROM Employees WHERE EmployeeID="+str(row.Author)).fetchone()
+            TaskList.append(Task(1, row.Title, desc, pos , size, row.TaskColor, row.Start, row.Deadline, row.Priority, row.TaskID, TextDB.Text, CheckBoxDB.Status, AuthorDB.Surname+' '+AuthorDB.Name+' '+AuthorDB.Patronymic))
 
     fillCounter = 0
     for i in range(0,5):
@@ -134,22 +141,113 @@ def board(request):
                         isBreak = True
                         break
             if not isFound:
-                Tasks[i].append(Task(0,"","",j,1,"",datetime.date.today(),datetime.date.today(),i+1,0,"",0))
+                Tasks[i].append(Task(0,"","",j,1,"",datetime.date.today(),datetime.date.today(),i+1,0,"",0,""))
     
     for task in TaskList:
         if request.method == "POST" and 'sendReport'+str(task.ID) in request.POST:
-            print(task.ID)
-            print(request.POST['Report'+str(task.ID)])
-            checkBoxDB = cursor.execute("SELECT * FROM CheckBoxes WHERE CheckBoxId="+str(str(task.ID))).fetchone()
+            checkBoxID = cursor.execute("SELECT * FROM CheckBoxList WHERE TaskID="+str(task.ID)).fetchone().CheckBoxID
+            checkBoxDB = cursor.execute("SELECT * FROM CheckBoxes WHERE CheckBoxId="+str(checkBoxID)).fetchone()
+            cursor.execute("UPDATE CheckBoxes SET Status=2 WHERE CheckBoxID="+str(checkBoxID))
             cursor.execute("UPDATE Texts SET Text='"+str(request.POST['Report'+str(task.ID)])+"' WHERE TextID="+str(CheckBoxDB.TextID))
             conn.commit()
             return redirect('board')
+
+    for task in TaskList:
+        if request.method == "POST" and 'sendStatus'+str(task.ID) in request.POST:
+            checkBoxID = cursor.execute("SELECT * FROM CheckBoxList WHERE TaskID="+str(task.ID)).fetchone().CheckBoxID
+            cursor.execute("UPDATE CheckBoxes SET Status=3 WHERE CheckBoxID="+str(checkBoxID))
+            conn.commit()
+            return redirect('board')
+
+    for task in TaskList:
+        if request.method == "POST" and 'sendNoStatus'+str(task.ID) in request.POST:
+            checkBoxID = cursor.execute("SELECT * FROM CheckBoxList WHERE TaskID="+str(task.ID)).fetchone().CheckBoxID
+            cursor.execute("UPDATE CheckBoxes SET Status=0 WHERE CheckBoxID="+str(checkBoxID))
+            conn.commit()
+            return redirect('board')
+    
+    for task in TaskList:
+        if request.method == "POST" and 'saveB'+str(task.ID) in request.POST:
+            stDate = request.POST['start'+str(task.ID)]
+            enDate = request.POST['end'+str(task.ID)]
+            sDate = datetime.date(int(stDate[:-6]), int(stDate[5:-3]), int(stDate[8:]))
+            eDate = datetime.date(int(enDate[:-6]), int(enDate[5:-3]), int(enDate[8:]))
+            if (sDate > eDate):
+                request.session['EditError'] = 2
+                request.session['EditErrorCount'] = 1
+            position = request.POST['pos'+str(task.ID)]
+            if taskIDs != "":
+                searchDB = cursor.execute("SELECT * FROM Tasks WHERE (Start BETWEEN '"+str(sDate)+"' AND '"+str(eDate)+"' OR Deadline BETWEEN '"+str(sDate)+"' AND '"+str(eDate)+"') AND (TaskID IN ("+taskIDs+") AND NOT TaskID="+str(task.ID)+") AND Priority="+position).fetchone()
+                if searchDB is not None:
+                    request.session['EditError'] = 1
+                    request.session['EditErrorCount'] = 1
+            if request.session['EditError'] == 0:
+                cursor.execute("UPDATE Tasks SET Priority="+str(position)+", Start='"+str(sDate)+"', Deadline='"+str(eDate)+"' WHERE TaskID="+str(task.ID))
+            cursor.execute("UPDATE Tasks SET Title='"+request.POST['title'+str(task.ID)]+"' WHERE TaskID="+str(task.ID))
+            textDB = cursor.execute("SELECT * FROM Tasks WHERE TaskID="+str(task.ID)).fetchone()
+            cursor.execute("UPDATE Texts SET Text='"+str(request.POST['desc'+str(task.ID)])+"' WHERE TextID="+str(textDB.Description))
+            conn.commit()
+            return redirect('board')
+    
+    for task in TaskList:
+        if request.method == "POST" and 'deleteB'+str(task.ID) in request.POST:
+            cursor.execute("DELETE FROM TaskList WHERE TaskID="+str(task.ID))
+            checkBoxID = cursor.execute("SELECT * FROM CheckBoxList WHERE TaskID="+str(task.ID)).fetchone().CheckBoxID
+            cursor.execute("DELETE FROM CheckBoxList WHERE TaskID="+str(task.ID))
+            descID = cursor.execute("SELECT * FROM Tasks WHERE TaskID="+str(task.ID)).fetchone().Description
+            cursor.execute("DELETE FROM Tasks WHERE TaskID="+str(task.ID))
+            textID = cursor.execute("SELECT * FROM CheckBoxes WHERE CheckBoxID="+str(checkBoxID)).fetchone().TextID
+            cursor.execute("DELETE FROM CheckBoxes WHERE CheckBoxID="+str(checkBoxID))
+            cursor.execute("DELETE FROM Texts WHERE TextID="+str(textID))
+            cursor.execute("DELETE FROM Texts WHERE TextID="+str(descID))
+            conn.commit()
+            return redirect('board')
+    
+    if request.method == "POST" and 'addB' in request.POST:
+        stDate = request.POST['addStart']
+        enDate = request.POST['addEnd']
+        sDate = datetime.date(int(stDate[:-6]), int(stDate[5:-3]), int(stDate[8:]))
+        eDate = datetime.date(int(enDate[:-6]), int(enDate[5:-3]), int(enDate[8:]))
+        if (sDate > eDate):
+            request.session['AddError'] = 2
+            request.session['AddErrorCount'] = 1
+        position = request.POST['addPos']
+        if taskIDs != "":
+            searchDB = cursor.execute("SELECT * FROM Tasks WHERE (Start BETWEEN '"+str(sDate)+"' AND '"+str(eDate)+"' OR Deadline BETWEEN '"+str(sDate)+"' AND '"+str(eDate)+"') AND TaskID IN ("+taskIDs+") AND Priority="+position).fetchone()
+            if searchDB is not None:
+                request.session['AddError'] = 1
+                request.session['AddErrorCount'] = 1
+        if request.session['AddError'] == 0:
+            cursor.execute("INSERT INTO Texts (Text) VALUES('"+request.POST['addDesc']+"')")
+            cursor.execute("INSERT INTO Texts (Text) VALUES('')")
+            textsDB = cursor.execute("SELECT * FROM Texts").fetchall()
+            descText = textsDB[len(textsDB)-2].TextID
+            reportText = textsDB[len(textsDB)-1].TextID
+            cursor.execute("INSERT INTO CheckBoxes (TextID, Status) VALUES("+str(reportText)+", 1)")
+            checkBoxDB = cursor.execute("SELECT * FROM CheckBoxes").fetchall()
+            checkBoxID = checkBoxDB[len(checkBoxDB)-1].CheckBoxID
+            cursor.execute("INSERT INTO Tasks (Title, Author, Description, Priority, Start, Deadline, TaskColor) VALUES('"+request.POST['addTitle']+"', "+str(request.session['UserData'])+", "+str(descText)+", "+str(position)+", '"+str(sDate)+"', '"+str(eDate)+"', 'info')")
+            addTaskDB = cursor.execute("SELECT * FROM Tasks").fetchall()
+            curTaskAdd = addTaskDB[len(addTaskDB)-1].TaskID
+            cursor.execute("INSERT INTO CheckBoxList (TaskID, CheckBoxID) VALUES("+str(curTaskAdd)+", "+str(checkBoxID)+")")
+            cursor.execute("INSERT INTO TaskList (EmployeeID, TaskID) VALUES("+str(InferiorList[int(request.session['CurInferior'])].ID)+", "+str(curTaskAdd)+")")
+            conn.commit()
+            request.session['AddTitle'] = ""
+            request.session['AddDesc'] = ""
+        return redirect('board')
+
+    if request.session['EditErrorCount'] == 1:
+        request.session['EditErrorCount'] = 0
+    
+    if request.session['AddErrorCount'] == 1:
+        request.session['AddErrorCount'] = 0
 
     context = {
         'UserName' : UserName,
         'RightsLevel' : UserD.RightsLevel,
         'Date' : request.session['Date'],
         'TodayDay' : TodayDay,
+        'TodayDate' : datetime.date.today().strftime("%Y-%m-%d"),
         'Tasks' : Tasks,
         'Tasks0L' : len(Tasks[0]),
         'Tasks1L' : len(Tasks[1]),
@@ -164,7 +262,9 @@ def board(request):
         'Thursday' : Days[3].strftime("%d.%m.%Y"),
         'Friday' : Days[2].strftime("%d.%m.%Y"),
         'Saturday' : Days[1].strftime("%d.%m.%Y"),
-        'Sunday' : Days[0].strftime("%d.%m.%Y")
+        'Sunday' : Days[0].strftime("%d.%m.%Y"),
+        'EditError' : request.session['EditError'],
+        'AddError' : request.session['AddError']
     }
 
     return render(request, 'board.html', context)
@@ -191,16 +291,31 @@ def auth(request):
         answer = cursor.execute("SELECT * FROM Employees WHERE Login='"+username+"' AND Password='"+password+"'").fetchall()
         user = authenticate(request, username=username, password=password)
         if answer and user is not None and user.is_active:
-            print(answer)
+            login(request, user)
             request.session['UserData'] = answer[0].EmployeeID
             request.session['Date'] = str(datetime.date.today().isocalendar()[0])+'-W'+str(datetime.date.today().isocalendar()[1])
             request.session['CurInferior'] = 0
             request.session['ACurUserID'] = answer[0].EmployeeID
             request.session['ASearch'] = ""
             request.session['ASearchType'] = -1
-            login(request, user)
+            request.session['isEditModal'] = False
+            request.session['isEditCount'] = 0
+            request.session['EditError'] = 0
+            request.session['EditErrorCount'] = 0
+            request.session['isAddModal'] = False
+            request.session['isAddCount'] = 0
+            request.session['AddError'] = 0
+            request.session['AddErrorCount'] = 0
+            request.session['AddTitle'] = ""
+            request.session['AddDesc'] = ""
+            request.session['mesSearch'] = ""
+            request.session['mesText'] = ""
+            request.session['isChatList'] = True
+            request.session['curChatID'] = 0
             request.session['loseLogin'] = 0
             request.session['loseCount'] = 0
+            request.session['isSendMes'] = 0
+            request.session['isSendMesCount'] = 0
             return redirect('board')
         else:
             request.session['loseLogin'] = 1
@@ -323,11 +438,14 @@ def adminlobby(request):
 
     NotInferiorList = []
     if not isNotSelectedUser:
-        InfIDs = str(request.session['UserData'])+','
+        InfIDs = ''
         for inf in InferiorList:
             InfIDs = InfIDs+' '+str(inf.ID)+','
         NonInferiorDB = None
-        NonInferiorDB = cursor.execute("SELECT * FROM Employees WHERE EmployeeID NOT IN ("+InfIDs[:-1]+")").fetchall()
+        if InfIDs == '':
+            NonInferiorDB = cursor.execute("SELECT * FROM Employees").fetchall()
+        else:
+            NonInferiorDB = cursor.execute("SELECT * FROM Employees WHERE EmployeeID NOT IN ("+InfIDs[:-1]+")").fetchall()
         for row in NonInferiorDB:
             NotInferiorList.append(UserObj(row.EmployeeID, row.Surname, row.Name, row.Patronymic, row.Login, row.Password, row.RightsLevel))
 
@@ -372,3 +490,134 @@ def adminlobby(request):
     }
 
     return render(request, 'adminlobby.html', context)
+
+def messenger(request):
+    chats = []
+
+    if request.session['isSendMesCount'] == 0:
+        request.session['isSendMes'] = 0
+
+    if request.method == 'POST' and 'searchButton' in request.POST:
+        request.session['isChatList'] = True
+        request.session['mesSearch'] = request.POST['search']
+    
+    if request.session['mesSearch'] == "":
+        chatsDB = cursor.execute('SELECT * FROM ChatList JOIN Chats ON ChatList.ChatID = Chats.ChatID WHERE EmployeeID=' + str(request.session['UserData'])).fetchall()
+        for row in chatsDB:
+            textIDs = cursor.execute("SELECT * FROM TextListInChat WHERE ChatID="+str(row.ChatID)).fetchall()
+            textIDsSTR = ''
+            for rowt in textIDs:
+                textIDsSTR = textIDsSTR + str(rowt.TextID) + ','
+            if textIDsSTR != '':
+                messagesDB = cursor.execute("SELECT * FROM Texts WHERE TextID IN ("+textIDsSTR[:-1]+")").fetchall()
+                sender = cursor.execute("SELECT * FROM Employees WHERE EmployeeID="+str(messagesDB[len(messagesDB)-1].SenderID)).fetchone()
+                chatTitle = cursor.execute("SELECT * FROM Chats WHERE ChatID="+str(row.ChatID)).fetchone().Title
+                chats.append(Chat(chatTitle, row.ChatID ,messagesDB[len(messagesDB)-1].Text,messagesDB[len(messagesDB)-1].SendingDate, sender.Surname+' '+sender.Name+' '+sender.Patronymic, messagesDB[len(messagesDB)-1].SenderID))
+            else:
+                chatTitle = cursor.execute("SELECT * FROM Chats WHERE ChatID="+str(row.ChatID)).fetchone().Title
+                chats.append(Chat(chatTitle, row.ChatID, "В этой беседе еще нет сообщений...", datetime.datetime.now(), "Система", 0))
+    else:
+        chatsDB = cursor.execute("SELECT * FROM ChatList JOIN Chats ON ChatList.ChatID = Chats.ChatID WHERE Title LIKE '%'+'" + request.session['mesSearch'] + "'+'%' AND EmployeeID=" + str(request.session['UserData'])).fetchall()
+        for row in chatsDB:
+            textIDs = cursor.execute("SELECT * FROM TextListInChat WHERE ChatID="+str(row.ChatID)).fetchall()
+            textIDsSTR = ''
+            for rowt in textIDs:
+                textIDsSTR = textIDsSTR + str(rowt.TextID) + ','
+            if textIDsSTR != '':
+                messagesDB = cursor.execute("SELECT * FROM Texts WHERE TextID IN ("+textIDsSTR[:-1]+")").fetchall()
+                sender = cursor.execute("SELECT * FROM Employees WHERE EmployeeID="+str(messagesDB[len(messagesDB)-1].SenderID)).fetchone()
+                chatTitle = cursor.execute("SELECT * FROM Chats WHERE ChatID="+str(row.ChatID)).fetchone().Title
+                chats.append(Chat(chatTitle, row.ChatID ,messagesDB[len(messagesDB)-1].Text,messagesDB[len(messagesDB)-1].SendingDate, sender.Surname+' '+sender.Name+' '+sender.Patronymic, messagesDB[len(messagesDB)-1].SenderID))
+            else:
+                chatTitle = cursor.execute("SELECT * FROM Chats WHERE ChatID="+str(row.ChatID)).fetchone().Title
+                chats.append(Chat(chatTitle, row.ChatID, "В этой беседе еще нет сообщений...", datetime.datetime.now(), "Система", 0))
+
+    for ch in chats:
+        if request.method == 'POST' and 'chatButton' + str(ch.ChatID) in request.POST:
+            request.session['isChatList'] = False
+            request.session['curChatID'] = ch.ChatID
+
+    if request.method == 'POST' and 'returnButton' in request.POST:
+        request.session['isChatList'] = True
+    
+    employee_list = cursor.execute('SELECT * FROM Employees WHERE NOT EmployeeID=' + str(request.session['UserData'])).fetchall()
+    if request.method == 'POST' and 'addChatButton' in request.POST:
+        print('len(employee_list) = ' + str(len(employee_list)))
+        if len(employee_list) > 0:
+            add_to_chat = []
+            for emps in employee_list:
+                if 'a' + str(emps.EmployeeID) in request.POST:
+                    add_to_chat.append(emps.EmployeeID)
+            print('request.POST["title"] = ' + str(request.POST["title"]))
+            chatTitle = request.POST["title"]
+            if len(add_to_chat) == 1:
+                empl = cursor.execute("SELECT * FROM Employees WHERE EmployeeID="+str(add_to_chat[0])).fetchone()
+                chatTitle = "Диалог: "+empl.Surname+" "+empl.Name+" "+empl.Patronymic
+            cursor.execute("INSERT INTO Chats (Title) VALUES ('" + chatTitle + "')")
+            all_chats = cursor.execute('SELECT * FROM Chats').fetchall()
+            last_record = all_chats[len(all_chats) - 1]
+            print('add_to_chat: ' + str(add_to_chat))
+            print('last_record_num = ' + str(last_record.ChatID))
+            cursor.execute("INSERT INTO ChatList (EmployeeID, ChatID) VALUES(" + str(request.session['UserData']) + ", " + str(last_record.ChatID) + ")")
+            for i in add_to_chat:
+                cursor.execute(
+                    "INSERT INTO ChatList (EmployeeID, ChatID) VALUES(" + str(i) + ", " + str(last_record.ChatID) + ")")
+            conn.commit()
+            request.session['isChatList'] = True
+            return redirect('messenger')
+
+    if request.method == "POST" and 'sendButton' in request.POST:
+        if request.POST['message'] != "":
+            cursor.execute("INSERT INTO Texts (Text, SendingDate, SenderID) VALUES('"+request.POST['message']+"', '"+str(datetime.datetime.now().strftime("%Y-%d-%m %H:%M:%S"))+"', '"+str(request.session['UserData'])+"')")
+            TextDB = cursor.execute("SELECT * FROM Texts").fetchall()
+            textID = TextDB[len(TextDB)-1].TextID
+            cursor.execute("INSERT INTO TextListInChat (ChatID, TextID) VALUES("+str(request.session['curChatID'])+", "+str(textID)+")")
+            conn.commit()
+            request.session['mesText'] = ""
+            request.session['isSendMes'] = 1
+            request.session['isSendMesCount'] = 1
+            return redirect('messenger')
+
+    if request.method == "POST" and 'saveData' in request.POST:
+        request.session['mesSearch'] = request.POST['saveSearch']
+        request.session['mesText'] = request.POST['message']
+
+    messages = []
+    if request.session['curChatID'] != 0:
+        textIDs = cursor.execute("SELECT * FROM TextListInChat WHERE ChatID="+str(request.session['curChatID'])).fetchall()
+        textIDsSTR = ''
+        for row in textIDs:
+            textIDsSTR = textIDsSTR + str(row.TextID) + ','
+        if textIDsSTR != '':
+            messagesDB = cursor.execute("SELECT * FROM Texts WHERE TextID IN ("+textIDsSTR[:-1]+")").fetchall()
+            for mes in messagesDB:
+                sender = cursor.execute("SELECT * FROM Employees WHERE EmployeeID="+str(mes.SenderID)).fetchone()
+                messages.append(Message(mes.Text, mes.SenderID, sender.Surname+' '+sender.Name+' '+sender.Patronymic, mes.SendingDate))
+
+    if request.session['isSendMesCount'] == 1:
+        request.session['isSendMesCount'] = 0
+
+    nchats = sorted(chats, key = lambda chat : chat.LastTrueDate)
+    nchats.reverse()
+
+    print(request.session['isSendMes'])
+
+    context = {
+        'chats': nchats,
+        'chat_list': request.session['isChatList'],
+        'employee_list': employee_list,
+        'cur_chat_title': '',
+        'cur_chat_ID': 0,
+        'cur_search': request.session['mesSearch'],
+        'mes_text' : request.session['mesText'],
+        'messages' : messages,
+        'cur_user' : request.session['UserData'],
+        'isSendMes' : request.session['isSendMes']
+    }
+
+    if request.session['curChatID'] != 0:
+        chatDB = cursor.execute("SELECT * FROM Chats WHERE ChatID="+str(request.session['curChatID'])).fetchone()
+        context['cur_chat_title'] = chatDB.Title
+        context['cur_chat_ID'] = chatDB.ChatID
+    
+    return render(request, 'messenger.html', context)

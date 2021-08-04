@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        {%load static %}
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+        <meta name="description" content="">
+        <meta name="author" content="">
+        <title>Система планирования:Мессенджер</title>
+        <link rel="stylesheet" type="text/css" href="{% static 'bootstrap/css/bootstrap.min.css' %}">
+        <link rel="stylesheet" type="text/css" href="{% static 'icons/font/bootstrap-icons.css' %}">
+        <link rel="stylesheet" type="text/css" href="{% static 'style.css' %}">
+    </head>
+    <body>
+        <div style="display: flex; flex-direction: column; height: 100vh;">
+
+        <header>
+            <div class="container-fluid px-3 bg-dark bg-gradient text-white">
+                <div class="d-flex flex-wrap align-items-center justify-content-center">
+                    <p class="d-flex align-items-center my-4 text-white text-decoration-none fs-2"><i class="bi-map-fill px-3"></i>TOGIRRO Board</p>
+                </div>
+            </div>
+        </header>
+
+        <div class="border border-3 border-dark" style="flex-grow: 1; text-align: center">
+
+            <div class="" style="width: 700px; display: inline-block; height: 100%">
+                <div class="row bg-dark bg-gradient border border-2 border-secondary" style="min-height: 160px">
+                    <div class="col" style="min-width: 500px">
+                        <h5 class="offcanvas-title fs-1 text-light" id="offcanvasExampleLabel">Беседы</h5>
+                    </div>
+                    <div class="col d-flex flex-row m-1" style="min-width: 500px; min-height: 52px; white-space: nowrap">
+                        <form method="POST">
+                            {% csrf_token %}
+                            <input id="searchField" type="text" class="form-control m-1 mt-3" name='search' value='{{ cur_search }}' style="width: 175%; height: 52px; display: inline-block" tabindex="-1">
+                            <button type="submit" class="btn btn-primary m-1" style="max-width: 50px; display: inline-block;" name="searchButton" tabindex="-1"><i class="bi-search fs-5"></i></button>
+                            <button type="button" class="btn btn-primary m-1" style="max-width: 50px; display: inline-block" name="addButton" data-bs-toggle="modal" data-bs-target="#addChat" ><i class="bi-plus-lg fs-5"></i></button>
+                        </form>
+                    </div>
+                </div>
+                <div class="row border border-2 border-secondary" style="height: calc(100% - 160px)">
+                    <form method="POST" action="" style="padding: 0px">
+                        {% csrf_token %}
+                        {% if chat_list %}
+                             <div class="row mx-1" style="padding-left: 0px; padding-right: 17px; height: calc(100vh - 108px - 160px); overflow-y: scroll">
+                                 <div>
+                                {% for el in chats %}
+                                    <button type="submit" class="btn btn-outline-dark m-1 overflow-hidden" name="chatButton{{ el.ChatID }}">
+                                        <div class="text-start fw-bold fs-5" style="width: 640px">{{ el.Title }}</div>
+                                        <div class="text-start fst-italic" style="font-size: 10px; width: 640px">{{ el.LastDate }}</div>
+                                        <div class="text-start" style="width: 640px">{{ el.LastSenderName }}: {{ el.LastText }}</div>
+                                    </button>
+                                {% endfor %}
+                                </div>
+                            </div>
+                            {% else %}
+                                <div class="row" style="margin-left: 1px; margin-right: 1px; margin-top: 1px">
+                                    <div class="col list-group-item-dark border border-secondary fs-4 overflow-hidden text-center pt-1 mb-1" style="white-space: nowrap">{{ cur_chat_title }}</div>
+                                    <button type="submit" class="col-1 btn btn-primary m-1" style="width: 80px;" name="returnButton" tabIndex = "-1"><i class="bi-arrow-right fs-5"></i></button>
+                                </div>
+                                <ul id="scrollChat" class="border border-0 border-secondary" style="height: calc(100vh - 120px - 96px - 160px); padding-left: 0px; overflow-y: scroll; margin-bottom: 4px">
+                                    {% for mes in messages %}
+                                    {% if mes.SenderID == cur_user%}
+                                    <li class="list-group-item message list-group-item-info overflow-hidden">
+                                        <div class="">
+                                            <div class="fw-bold fs-5 text-start w-100">{{ mes.SenderName }}</div>
+                                            <div class="text-start w-100 fst-italic" style="font-size: 10px;">{{ mes.SendingDate }}</div>
+                                            <div class="text-start w-100">{{ mes.Text }}</div>
+                                        </div>
+                                    </li>
+                                    {% else %}
+                                    <li class="list-group-item message list-group-item-warning overflow-hidden">
+                                        <div class="">
+                                            <div class="fw-bold fs-5 text-end w-100">{{ mes.SenderName }}</div>
+                                            <div class="text-end w-100" style="font-size: 10px;">{{ mes.SendingDate }}</div>
+                                            <div class="text-end w-100">{{ mes.Text }}</div>
+                                        </div>
+                                    </li>
+                                    {% endif %}
+                                    {% endfor %}
+                                </ul>
+                                <!--<textarea id="chat-log" cols="74" rows="20" style="border: 2px solid black; height: calc(100% - 104px); overflow-x: hidden; overflow-y: scroll"></textarea>-->
+                                <form method="POST">
+                                    {% csrf_token %}
+                                <div class="d-flex flex-row" style="white-space: nowrap">
+                                    <input onfocus=" let value = this.value; this.value = null; this.value=value" id="chat-message-input" type="text" class="col form-control mb-1 ms-1" style="margin-top: 3px" name='message' placeholder='Напишите сообщение...' value="{{ mes_text }}">
+                                    <button id="chat-message-submit" tabIndex = "0" autofocus type="submit" class="col btn btn-primary m-1" style="max-width: 50px; display: inline-block" name="sendButton"><i class="bi-caret-right-fill fs-5"></i></button>
+                                    <input type="text" id="saveSearch" name="saveSearch" style="display: none;">
+                                    <button id="saveB" name="saveData" style="display: none;"></button>           
+                                </div>
+                                </form>
+                        {% endif %}
+                    </form>
+
+                    <form method="POST" action="">
+                        <div class="modal fade" id="addChat" tabindex="-1" aria-labelledby="addChatLabel" aria-hidden="true">
+                            <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+                                <div class="modal-content">
+                                    <div class="modal-header bg-dark bg-gradient">
+                                        <p class="text-center text-white fs-3" style="min-width: 100%;"><strong>Создание беседы</strong></p>
+                                    </div>
+
+                                    <div class="modal-body" style="text-align: left">
+
+                                        <label>Название беседы:</label>
+                                        <input type="text" class="col form-control mb-1" name='title' placeholder='Введите название беседы'>
+                                        <label>Участники беседы:</label>
+                                        <div class="border border-1 border-secondary rounded-3 mb-1 p-1" style="overflow-y: scroll; height: 600px;">
+                                            <div class="list-group">
+                                                {% for user in employee_list %}
+                                                    <div class="list-group-item list-group-item-primary">
+                                                        <input class="form-check-input" type="checkbox" name="a{{ user.EmployeeID }}">
+                                                        <label class="form-check-label">
+                                                            {{ user.Surname }} {{ user.Name }} {{ user.Patronymic }}
+                                                        </label>
+                                                    </div>
+                                                {% endfor %}
+                                            </div>
+                                        </div>
+
+                                    </div>
+
+                                    <div class="modal-footer">
+                                        <button type="button" class="btn btn-secondary fs-5" data-bs-dismiss="modal">Отмена</button>
+                                        {% csrf_token %}
+                                        <button type="submit" class="btn btn-success fs-5" name="addChatButton">Создать беседу</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            
+            <script type="text/javascript" src="{% static 'jquery-3.6.0.min.js' %}"></script>
+            <script type="text/javascript" src="{% static 'bootstrap/js/bootstrap.min.js' %}"></script>
+            <script type="text/javascript" src="{% static 'bootstrap/js/bootstrap.bundle.min.js' %}"></script>
+            <script type="text/javascript" src="{% static 'script.js' %}"></script>
+
+            <script>
+                var input = document.getElementById("chat-message-input");
+                input.addEventListener("keyup", function(event) {
+                // Number 13 is the "Enter" key on the keyboard
+                if (event.keyCode === 13) {
+                    // Cancel the default action, if needed
+                    event.preventDefault();
+                    // Trigger the button element with a click
+                    document.getElementById("chat-message-submit").click();
+                }
+                });
+
+                if ({{ isSendMes }} == 1)
+                {
+                    document.getElementById("scrollChat").scrollTop = document.getElementById("scrollChat").scrollHeight;
+                }
+                else
+                {
+                    document.getElementById("scrollChat").scrollTop = localStorage.getItem("scroll_position");
+                }
+
+                var elId = localStorage.getItem("activeEl");
+                if (elId == "chat-message-input"){
+                    var doc = document.getElementById("chat-message-input");
+                    doc.focus();
+                }
+                if (elId == "searchField"){
+                    var doc = document.getElementById("searchField");
+                    doc.focus();
+                }
+                
+                setTimeout(function(){
+                    localStorage.setItem("activeEl", document.activeElement.id);
+                    localStorage.setItem("scroll_position", document.getElementById("scrollChat").scrollTop);
+                    document.getElementById("saveSearch").value = document.getElementById("searchField").value;
+                    document.getElementById("saveB").click();
+                }, 5000)
+            </script>
+        </div>
+
+        </div>
+    </body>
+</html>

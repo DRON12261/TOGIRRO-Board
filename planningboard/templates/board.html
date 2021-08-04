@@ -6,10 +6,9 @@
         <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
         <meta name="description" content="">
         <meta name="author" content="">
-        <title>Система планирования</title>
+        <title>Система планирования:Доска задач</title>
         <link rel="stylesheet" type="text/css" href="{% static 'bootstrap/css/bootstrap.min.css' %}">
-        <link rel="stylesheet" type="text/css" href="{% static 'icons/font/bootstrap-icons.css' %}">
-        <link rel="stylesheet" type="text/css" href="{% static 'gridstrap/jquery.gridstrap.css' %}">  
+        <link rel="stylesheet" type="text/css" href="{% static 'icons/font/bootstrap-icons.css' %}">  
         <link rel="stylesheet" type="text/css" href="{% static 'style.css' %}">
     </head>
     <body>
@@ -61,12 +60,12 @@
                         </div>
                         {% endif %}
                         <div class="col">
-                            <button type="button" class="btn btn-outline-light m-1" data-bs-toggle="offcanvas" data-bs-target="#offcanvasScrolling" aria-controls="offcanvasScrolling">
+                            <a class="btn btn-outline-light m-1" href="{% url 'messenger' %}" target="_blank">
                                 <div class="col">
                                     <div class="row text-center mx-auto"><i class="bi-chat-right-text-fill fs-3"></i></div>
                                     <div class="row text-center mx-auto">Мессенджер</div>
                                 </div>
-                            </button> 
+                            </a> 
                         </div>
                         <div class="col">
                             <form method="POST" action="">
@@ -92,13 +91,13 @@
                     <p class="d-flex align-items-center my-2 my-lg-0 me-lg-auto text-decoration-none fs-4"><i class="bi-person-bounding-box px-2"></i>Сотрудник:</p>
                     <div class="col-sm p-1 mx-2 my-1">
                         {% csrf_token %}
-                        <select onChange="form.submit();" class="form-select" name='inferior' aria-label=".form-select-lg example">
+                        <select onChange="form.submit();" class="form-select" name='inferior' aria-label=".form-select-lg example" searchable="Поиск..">
                             {% for Inferior in InferiorList %}
                             <option value="{{ Inferior.Position }}" {% if CurInferior == Inferior.Position %}selected{% endif %}>{{ Inferior.Name }}</option>
                             {% endfor %}
                         </select>
                     </div>
-                    {% if CurInferior > 0 or RightsLevel == 2 %}
+                    {% if CurInferior > 0 %}
                     <button type="button" class="btn btn-success me-3 m-1" data-bs-toggle="modal" data-bs-target="#newTask">Создать задачу</button>
                     {% endif %}
                     {% endif %}
@@ -152,7 +151,7 @@
 
                                 <span class="d-flex bg-dark bg-gradient border border-dark border-2 text-white position-relative justify-content-end" style="min-height: 32px;">
                                     {% if Task.Color == 'info' %}{% else %}<i class="bi-{% if Task.Color != 'success' %}exclamation-triangle-fill{% else %}award-fill{% endif %} text-{{ Task.Color }} fs-5 mx-2" style="margin-top: -2px;"></i>{% endif %}
-                                    {% if RightsLevel > 0 and CurInferior > 0 or RightsLevel == 2 %}<button type="button" class="btn btn-outline-light px-2" style="max-height: 26px; padding: 0px;" data-bs-toggle="modal" data-bs-target="#editTask{{ Task.ID }}"><i class="bi-pen-fill"></i></button>{% endif %}
+                                    {% if RightsLevel > 0 and CurInferior > 0 %}<button type="button" class="btn btn-outline-light px-2" style="max-height: 26px; padding: 0px;" data-bs-toggle="modal" data-bs-target="#editTask{{ Task.ID }}"><i class="bi-pen-fill"></i></button>{% endif %}
                                     <button type="button" class="btn btn-outline-light ms-2 px-2" style="max-height: 26px; padding: 0px;" data-bs-toggle="modal" data-bs-target="#seeTask{{ Task.ID }}"><i class="bi-journal-arrow-up"></i></button> 
                                 </span>
                             </div>
@@ -195,7 +194,7 @@
                                 </div>
                                 <div class="col list-group-item-warning mb-1 ms-1 p-1 border border-dark border-2 text-center rounded-3">
                                     <p class="fs-4"><i class="bi-person-lines-fill fs-4 px-1"></i><strong>Автор задачи</strong></p>
-                                    <p class="bg-dark bg-gradient text-white rounded-pill fs-5">Плющев Иван Петрович</p>
+                                    <p class="bg-dark bg-gradient text-white rounded-pill fs-5">{{ Task.AuthorName }}</p>
                                 </div>
 
                                 <div class="bg-white overflow-auto border border-secondary rounded-3" style="width: 100%; min-height: 300px; max-height: 300px;">
@@ -207,12 +206,22 @@
 
                             <form method="POST" action="">
                             <div class="">
-                                <div class="alert alert-primary text-center fs-5" role="alert" style="margin-bottom: 0px;"><strong>Отчет исполняющего</strong></div>
-                                {% csrf_token %}
-                                <textarea class="form-control mb-1" id="exampleFormControlTextarea1" rows="3" style="margin-top: 0px;" name="Report{{ Task.ID }}">{{ Task.ReportText }}</textarea>
-                                <button type="button" class="btn btn-primary m-1">Прикрепить файл</button>
-                                {% csrf_token %}
-                                <button type="submit" class="btn btn-primary m-1" name="sendReport{{ Task.ID }}">Отправить на верификацию</button>
+                                <div class="alert alert-{% if Task.Status == 3 %}success{% else %}{% if Task.Status == 0 %}danger{% else %}primary{% endif %}{% endif %} text-center fs-5" role="alert" style="margin-bottom: 0px;"><strong>Отчет исполняющего {% if Task.Status == 0 %}[Возвращено на доработку]{% endif %}{% if Task.Status == 2 %}[Отправлено на верификацию]{% endif %}{% if Task.Status == 3 %}[Выполнена]{% endif %}</strong></div>
+                                {% if CurInferior == 0 %}
+                                    {% csrf_token %}
+                                    <textarea class="form-control mb-1" id="exampleFormControlTextarea1" rows="3" style="margin-top: 0px;" name="Report{{ Task.ID }}">{{ Task.ReportText }}</textarea>
+                                    <button type="button" class="btn btn-primary m-1">Прикрепить файл</button>
+                                    {% csrf_token %}
+                                    <button type="submit" class="btn btn-primary m-1" name="sendReport{{ Task.ID }}">Отправить на верификацию</button>
+                                {% else %}
+                                    <div class="form-control mb-1">{{ Task.ReportText }}</div>
+                                    {% csrf_token %}
+                                    <button type="submit" class="btn btn-danger m-1" name="sendNoStatus{{ Task.ID }}">Возвратить на доработку</button>
+                                    {% if Task.Status < 3 %}
+                                        {% csrf_token %}
+                                        <button type="submit" class="btn btn-success m-1" name="sendStatus{{ Task.ID }}">Засчитать задачу выполненной</button>
+                                    {% endif %}
+                                {% endif %}
                                 <button type="button" class="btn btn-danger m-1" data-bs-dismiss="modal">Закрыть окно</button>
                             </div>
                             </form>
@@ -238,13 +247,15 @@
             {% for TaskLine in Tasks %}
             {% for Task in TaskLine %}
             {% if Task.IsTask == 1 %}
+            <form method="POST" action="">
+            {% csrf_token %}
             <div class="modal fade" id="editTask{{ Task.ID }}" tabindex="-1" aria-labelledby="editTaskLabel" aria-hidden="true">
                 <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
                     <div class="modal-content">
                         <div class="modal-header bg-warning border border-dark border-3">
                             <span class="" style="min-height: 42px; min-width: 100%;">
                                 <div class="mx-3 my-1 fs-3 bg-dark bg-gradient text-white text-center rounded-pill">
-                                    <input type="text" class="btn list-group-item-dark border border-1 border-dark fw-bolder my-4" style="width: 80%;" value="{{ Task.Title }}">
+                                    <input type="text" class="btn list-group-item-dark border border-1 border-dark fw-bolder my-4" style="width: 80%;" value="{{ Task.Title }}" name="title{{ Task.ID }}">
                                 </div>
                             </span>
                         </div>
@@ -254,15 +265,15 @@
 
                                 <div class="col list-group-item-info mb-1 me-1 p-1 border border-dark border-2 text-center rounded-3">
                                     <p class="fs-4"><i class="bi-clock-fill fs-4 px-1"></i><strong>Дата начала</strong></p>
-                                    <input type="date" class="btn list-group-item-success border border-1 border-success my-4" style="width: 80%;" value="{{ Task.StartDateSTRE }}">
+                                    <input type="date" class="btn list-group-item-success border border-1 border-success my-4" style="width: 80%;" value="{{ Task.StartDateSTRE }}" name="start{{ Task.ID }}">
                                 </div>
                                 <div class="col list-group-item-danger mb-1 mx-1 p-1 border border-dark border-2 text-center rounded-3">
                                     <p class="fs-4"><i class="bi-alarm-fill fs-4 px-1"></i><strong>Дата завершения</strong></p>
-                                    <input type="date" class="btn list-group-item-danger border border-1 border-danger my-4" style="width: 80%;" value="{{ Task.EndDateSTRE }}">
+                                    <input type="date" class="btn list-group-item-danger border border-1 border-danger my-4" style="width: 80%;" value="{{ Task.EndDateSTRE }}" name="end{{ Task.ID }}">
                                 </div>
                                 <div class="col list-group-item-primary mb-1 mx-1 p-1 border border-dark border-2 text-center rounded-3">
                                     <p class="fs-4"><i class="bi-list-ol fs-4 px-1"></i><strong>Позиция</strong></p>
-                                    <select class="btn list-group-item-primary border border-1 border-primary my-4" style="width: 80%;">
+                                    <select class="btn list-group-item-primary border border-1 border-primary my-4" style="width: 80%;" name="pos{{ Task.ID }}">
                                         <option value="1" {% if Task.Priority == 1 %}selected{% endif %}>1 строка</option>
                                         <option value="2" {% if Task.Priority == 2 %}selected{% endif %}>2 строка</option>
                                         <option value="3" {% if Task.Priority == 3 %}selected{% endif %}>3 строка</option>
@@ -271,29 +282,72 @@
                                     </select>
                                 </div>
 
-                                <textarea type="text" class="form-control bg-white overflow-auto border border-secondary rounded-3" style="width: 100%; min-height: 300px; max-height: 300px;">{{ Task.Description }}</textarea>
+                                <textarea type="text" class="form-control bg-white overflow-auto border border-secondary rounded-3" style="width: 100%; min-height: 300px; max-height: 300px;" name="desc{{ Task.ID }}">{{ Task.Description }}</textarea>
                             </div>
 
                             <div class="">
-                                <button type="submit" class="btn btn-primary m-1">Сохранить изменения</button>
+                                <button type="submit" class="btn btn-primary m-1" name="saveB{{ Task.ID }}">Сохранить изменения</button>
                                 <button type="button" class="btn btn-danger m-1" data-bs-dismiss="modal">Закрыть окно</button>
-                                <button type="button" class="btn btn-danger m-1" data-bs-dismiss="modal">Удалить задачу</button>
+                                <button type="submit" class="btn btn-danger m-1" name="deleteB{{ Task.ID }}">Удалить задачу</button>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
+            </form>
             {% endif %}
             {% endfor %}
             {% endfor %}
 
+            <script type="text/javascript" src="{% static 'jquery-3.6.0.min.js' %}"></script>
+            {% if EditError > 0 %}
+            <script>
+                $(document).ready(function() {$("#editErr").modal('show');});
+            </script>
+            {% endif %}
+            {% if AddError > 0 %}
+            <script>
+                $(document).ready(function() {$("#newTask").modal('show');});
+            </script>
+            {% endif %}
+
+            <div class="modal" tabindex="-1" id="editErr">
+                <div class="modal-dialog modal-dialog-centered">
+                  <div class="modal-content">
+                    <div class="modal-header">
+                      <h5 class="modal-title">ВНИМАНИЕ!</h5>
+                      <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        {% if EditError == 1 %}
+                        <div class="alert alert-danger text-center" role="alert" style="margin-bottom: 5px;">
+                            Недопустимое значение <strong>даты начала</strong>, <strong>даты завершения</strong> или <strong>позиции</strong>! Это место уже занимает другая задача!</br>
+                            Остальные данные были сохранены!
+                        </div>
+                        {% endif %}
+                        {% if EditError == 2 %}
+                        <div class="alert alert-danger text-center" role="alert" style="margin-bottom: 5px;">
+                            <strong>Дата начала</strong> не может быть позже <strong>даты завершения</strong>!</br>
+                            Остальные данные были сохранены!
+                        </div>
+                        {% endif %}
+                    </div>
+                    <div class="modal-footer">
+                      <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">OK</button>
+                    </div>
+                  </div>
+                </div>
+            </div>
+
+            <form method="POST" action="">
+                {% csrf_token %}
             <div class="modal fade" id="newTask" tabindex="-1" aria-labelledby="newTaskLabel" aria-hidden="true">
                 <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
                     <div class="modal-content">
                         <div class="modal-header bg-warning border border-dark border-3">
                             <span class="" style="min-height: 42px; min-width: 100%;">
                                 <div class="mx-3 my-1 fs-3 bg-dark bg-gradient text-white text-center rounded-pill">
-                                    <input type="text" class="btn list-group-item-dark border border-1 border-dark fw-bolder my-4" style="width: 80%;">
+                                    <input type="text" class="btn list-group-item-dark border border-1 border-dark fw-bolder my-4" style="width: 80%;" name="addTitle" required>
                                 </div>
                             </span>
                         </div>
@@ -303,15 +357,15 @@
 
                                 <div class="col list-group-item-info mb-1 me-1 p-1 border border-dark border-2 text-center rounded-3">
                                     <p class="fs-4"><i class="bi-clock-fill fs-4 px-1"></i><strong>Дата начала</strong></p>
-                                    <input type="date" class="btn list-group-item-success border border-1 border-success my-4" style="width: 80%;">
+                                    <input type="date" class="btn list-group-item-success border border-1 border-success my-4" style="width: 80%;" name="addStart" value="{{ TodayDate }}">
                                 </div>
                                 <div class="col list-group-item-danger mb-1 mx-1 p-1 border border-dark border-2 text-center rounded-3">
                                     <p class="fs-4"><i class="bi-alarm-fill fs-4 px-1"></i><strong>Дата завершения</strong></p>
-                                    <input type="date" class="btn list-group-item-danger border border-1 border-danger my-4" style="width: 80%;">
+                                    <input type="date" class="btn list-group-item-danger border border-1 border-danger my-4" style="width: 80%;" name="addEnd" value="{{ TodayDate }}">
                                 </div>
                                 <div class="col list-group-item-primary mb-1 mx-1 p-1 border border-dark border-2 text-center rounded-3">
                                     <p class="fs-4"><i class="bi-list-ol fs-4 px-1"></i><strong>Позиция</strong></p>
-                                    <select class="btn list-group-item-primary border border-1 border-primary my-4" style="width: 80%;">
+                                    <select class="btn list-group-item-primary border border-1 border-primary my-4" style="width: 80%;" name="addPos">
                                         <option value="1">1 строка</option>
                                         <option value="2">2 строка</option>
                                         <option value="3">3 строка</option>
@@ -320,22 +374,33 @@
                                     </select>
                                 </div>
 
-                                <textarea type="text" class="form-control bg-white overflow-auto border border-secondary rounded-3" style="width: 100%; min-height: 300px; max-height: 300px;"></textarea>
+                                {% if AddError == 1 %}
+                                <div class="alert alert-danger text-center" role="alert" style="margin-bottom: 5px;">
+                                    Недопустимое значение <strong>даты начала</strong>, <strong>даты завершения</strong> или <strong>позиции</strong>! Это место уже занимает другая задача!
+                                </div>
+                                {% endif %}
+                                {% if AddError == 2 %}
+                                <div class="alert alert-danger text-center" role="alert" style="margin-bottom: 5px;">
+                                    <strong>Дата начала</strong> не может быть позже <strong>даты завершения</strong>!
+                                </div>
+                                {% endif %}
+
+                                <textarea type="text" class="form-control bg-white overflow-auto border border-secondary rounded-3" style="width: 100%; min-height: 300px; max-height: 300px;" name="addDesc"></textarea>
                             </div>
 
                             <div class="">
-                                <button type="submit" class="btn btn-success m-1">Создать задачу</button>
+                                <button type="submit" class="btn btn-success m-1" name="addB">Создать задачу</button>
                                 <button type="button" class="btn btn-danger m-1" data-bs-dismiss="modal">Закрыть окно</button>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
+            </form>
 
             <script type="text/javascript" src="{% static 'jquery-3.6.0.min.js' %}"></script>
             <script type="text/javascript" src="{% static 'bootstrap/js/bootstrap.min.js' %}"></script>
             <script type="text/javascript" src="{% static 'bootstrap/js/bootstrap.bundle.min.js' %}"></script>
-            <script type="text/javascript" src="{% static 'gridstrap/jquery.gridstrap.js' %}"></script>
             <script type="text/javascript" src="{% static 'script.js' %}"></script>
         </div>
 
