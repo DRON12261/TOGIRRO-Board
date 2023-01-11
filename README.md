@@ -1,8 +1,3 @@
 # TOGIRRO-Board
 
-Необходима библиотека Django 3.1.7, pyodbc и настроенная бд для SQL SERVER
-</br>
-Для настройки подключения откорректировать данные в DBConfig.txt (всегда должна оставаться одна пустая строка в конце файла)
-
-</br></br>
-запуск по локальной сети: python manage.py runserver <ipv4 адрес вашего адаптера>:8000
+https://docs.google.com/presentation/d/1QR5MMI9MFSL8AKoJvlHveVa8QDFOFfxhbI0MWfKJDFI/edit?usp=sharing
